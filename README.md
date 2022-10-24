@@ -11,5 +11,3 @@ Specifically this variant: `mcontriever-msmarco: mcontriever with fine-tuning on
 from src.contriever import Contriever
 mcontriever_msmarco = Contriever.from_pretrained("facebook/mcontriever-msmarco")
 ```
-
-- [ ] Come up with better questions for testing sentence and paragraph level embeddings
