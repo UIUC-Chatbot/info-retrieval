@@ -1,6 +1,7 @@
 # importing required libraries
 
 import pandas as pd
+from pathlib import Path
 import numpy as np
 import json
 import re
@@ -38,12 +39,11 @@ class ContrieverCB:
         return sentence_embeddings
     
     
-    def generate_embeddings(self, path_to_json: str, path_to_output: str) -> None:
+    def generate_embeddings(self, path_to_json: str) -> None:
         """
         Function takes input json filepath, generates numpy embeddings of the file and
-        saves them at the given output filepath.
+        saves them in the same directory as the input json file.
         :param path_to_json: input filepath
-        :param path_to_output: output filepath
         :return: None
         """
         tokenizer = AutoTokenizer.from_pretrained('facebook/contriever-msmarco')
@@ -77,18 +77,22 @@ class ContrieverCB:
         # convert embeddings list to numpy array
         embeddings_array = np.array(embeddings_list)
         
+        print(embeddings_array.shape)
+        
         # reshape the numpy array
         x = embeddings_array.shape[0]
         y = embeddings_array.shape[2]
         embeddings_array.reshape((x,y))
         
         # save the embeddings in a numpy file
-        # filename = path_to_json.split('\\')[-1].split('.')[0]
-        # filepath = os.path.join(path_to_output, filename)
-        filepath = path_to_output
+        # use python pathlib to change the file extension from .json to .npy
+        path_to_output = Path(path_to_json)
+        path_to_output = path_to_output.with_suffix('.npy')
+        
         
         # saving the embeddings as a numpy file in the destination folder
-        np.save(filepath, embeddings_array)
+        np.save(path_to_output, embeddings_array)
+        print("Saved the embeddings (for faster future loading) to: ", path_to_output)
         
         # saving the embeddings into a dictionary
         self.embeddings[path_to_json] = embeddings_array
