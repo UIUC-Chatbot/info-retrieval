@@ -125,6 +125,7 @@ class ContrieverCB:
         embeddings = torch.from_numpy(self.embeddings[path_to_json])
         
         # convert query to tensor
+        # TODO: init this model in this class' init function. 
         tokenizer = AutoTokenizer.from_pretrained('facebook/contriever-msmarco')
         model = AutoModel.from_pretrained('facebook/contriever-msmarco')
         
