@@ -98,7 +98,7 @@ class ContrieverCB:
         self.embeddings[path_to_json] = embeddings_array
         
     
-    def retrieve_topk(self, search_string: str, path_to_json: str, k: int):
+    def retrieve_topk(self, search_string: str, path_to_json: str = "../data-generator/split_textbook/sections.json", k: int = 5):
         """
         Function takes json data as input and returns the topk relative to the data
         :param search_string: query to match and retrieve
@@ -111,20 +111,21 @@ class ContrieverCB:
         if not (path_to_json in self.embeddings):
             
             # changing .json to .npy
-            filename = os.path.splitext(path_to_json)[0]
-            path_to_npy = filename + '.npy'
+            path_to_npy = Path(path_to_json)
+            path_to_npy = path_to_npy.with_suffix('.npy')
             
             # check if .npy exists and load into dictionary
             if os.path.exists(path_to_npy):
                 self.embeddings[path_to_json] = np.load(path_to_npy)
             else:
                 # .npy doesn't exist, so generate embeddings
-                self.generate_embeddings(path_to_json, path_to_npy)
+                self.generate_embeddings(path_to_json)
         
         # convert numpy embeddings to tensors
         embeddings = torch.from_numpy(self.embeddings[path_to_json])
         
         # convert query to tensor
+        # TODO: init this model in this class' init function. 
         tokenizer = AutoTokenizer.from_pretrained('facebook/contriever-msmarco')
         model = AutoModel.from_pretrained('facebook/contriever-msmarco')
         
