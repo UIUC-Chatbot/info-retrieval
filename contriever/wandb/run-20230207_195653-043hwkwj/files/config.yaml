@@ -1,0 +1,60 @@
+wandb_version: 1
+
+_wandb:
+  desc: null
+  value:
+    cli_version: 0.13.9
+    framework: huggingface
+    huggingface_version: 4.26.0
+    is_jupyter_run: false
+    is_kaggle_kernel: false
+    m:
+    - 1: trainer/global_step
+      6:
+      - 3
+    python_version: 3.10.8
+    start_time: 1675821413.285926
+    t:
+      1:
+      - 1
+      - 9
+      - 11
+      - 41
+      - 49
+      - 51
+      - 55
+      2:
+      - 1
+      - 9
+      - 11
+      - 41
+      - 49
+      - 51
+      - 55
+      3:
+      - 7
+      - 13
+      - 23
+      4: 3.10.8
+      5: 0.13.9
+      6: 4.26.0
+      8:
+      - 5
+eval_batch_size:
+  desc: null
+  value: 32
+learning_rate:
+  desc: null
+  value: 2.0e-05
+model_name:
+  desc: null
+  value: facebook/contriever-msmarco
+train_batch_size:
+  desc: null
+  value: 32
+warmup_steps:
+  desc: null
+  value: 1000
+weight_decay:
+  desc: null
+  value: 0.01

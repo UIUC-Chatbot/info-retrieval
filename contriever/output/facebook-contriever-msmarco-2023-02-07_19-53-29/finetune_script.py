@@ -74,36 +74,82 @@ class MSMARCOData(LightningDataModule):
     # self.collections = {lang: load_dataset('unicamp-dl/mmarco', f'collection-{lang}')['collection'] for lang in self.langs}
 
     # asmita's paths
-    s = open("info-retrieval/contriever/textbook_embeddings/fine_tune_cleaned_training_data.json")
+    s = open("./textbook_embeddings/fine_tune_cleaned_training_data.json")
     data = json.load(s)
-    
     df = pd.DataFrame.from_dict(data, orient="index")
-    self.triplets = []
-    for row in df.iterrows():
-      tmp = []
-      tmp2 = []
-      tmp.append(row[1]['query'])
-      tmp.append(row[1]['pos_a'])
-      tmp2.append(row[1]['neg_a1'])
-      tmp2.append(row[1]['neg_a2'])
-      tmp2.append(row[1]['neg_a3'])
+    self.triplets = df[['query', 'pos_a', 'neg_a1', 'neg_a2', 'neg_a3']]
 
-      tmp.append(tmp2)
-      self.triplets.append(tmp)
+    # self.bad_data = []
+    # for dataset in [third, fourth]:
+    #     for row in dataset:
+    #         self.bad_data.append(row['text'])
 
-    
+    # # create tirplets+ of <question, good answer (pos), and 3 bad answers (neg1, neg2, neg3)>
+    # self.triplets = []
+    # for dataset in [first, second]:
+    #     for row in dataset:
+    #         itr_counter = 0
+    #         # Ensure our negative samples are not the same as each other (and that neg not == pos sample)
+
+    #         neg1, neg2, neg3, = random.choice(self.bad_data), random.choice(self.bad_data), random.choice(self.bad_data)
+    #         while ( neg1 == neg2 or neg1 == neg3 or neg2 == neg3 ) and ( any(neg_ex in row['GPT-3-Semantic-Search-Generations']['answer'] for neg_ex in [neg1, neg2, neg3]) ) and itr_counter < 50:
+    #             neg1, neg2, neg3, = random.choice(self.bad_data), random.choice(self.bad_data), random.choice(self.bad_data)
+    #             itr_counter += 1
+    #         if itr_counter == 50:
+    #             print("❌❌❌ WARNING: 50 iterations reached, negs may be equal ❌❌❌")
+    #         self.triplets.append([row['GPT-3-Semantic-Search-Generations']['question'], row['GPT-3-Semantic-Search-Generations']['answer'],[neg1, neg2, neg3]])
+
   def collate_fn(self, batch):
+    '''
+        # EXPECED DATA FORMAT BEFORE TOKENIZATION
+        query_doc_pairs_OUR_INTERPRETATION = [
+              [('query1', 'pos1'), ('query2', 'po2')],
+                [('query1', 'neg1'), ('query2', 'neg2')],
+                [],
+                [],
+                []
+            ]
+        '''
     #Create data for list-rank-loss
     query_doc_pairs = [[] for _ in range(1 + 3)]
 
-    for row in batch:
-      query_text = row[0]
-      #pos
-      query_doc_pairs[0].append((query_text, row[1]))
-      #neg
-      for neg_id, neg in enumerate(row[2]):
-        query_doc_pairs[1+neg_id].append((query_text, neg))
+    #example_train_data = [['query', 'pos', 'neg'],['query2', 'po2', 'neg2']]
 
+    # create a list of lists
+    query_doc_pairs = []
+    for row in batch.iterrows():
+      tmp_row = []
+      tmp_row.append(row[1]['query'])
+      tmp_row.append(row[1]['pos_a'])
+      tmp_row.append(row[1]['neg_a1'])
+      tmp_row.append(row[1]['neg_a2'])
+      tmp_row.append(row[1]['neg_a3'])
+
+      query_doc_pairs.append(tmp_row)
+      ''' 
+                  future refernece for multiple negs
+                  # for num_neg, neg_id in enumerate(neg_ids):
+                      # query_doc_pairs[1+num_neg].append((query_text, row[2]))
+                  '''
+    ''' ORIGINAL CODE
+              query_doc_pairs = [[] for _ in  range(1+self.num_negs)]
+              cross_lingual_batch = random.random() < self.cross_lingual_chance 
+              for row in batch:
+                  qid = row['qid']
+                  print('qid', qid)
+                  pos_id = random.choice(row['pos'])
+                  query_lang = random.choice(self.langs)
+                  query_text = self.queries[query_lang][qid]
+                      
+                  doc_lang = random.choice(self.langs) if cross_lingual_batch else query_lang 
+                  query_doc_pairs[0].append((query_text, self.collections[doc_lang][pos_id]['text']))
+                  dense_bm25_neg = list(set(row['dense_neg'] + row['bm25_neg']))
+                  neg_ids = random.sample(dense_bm25_neg, self.num_negs)
+                  for num_neg, neg_id in enumerate(neg_ids):
+                      doc_lang = random.choice(self.langs) if cross_lingual_batch else query_lang
+                      query_doc_pairs[1+num_neg].append((query_text, self.collections[doc_lang][neg_id]['text']))
+              '''
+    print("query_doc_pairs", query_doc_pairs)
 
     #Now tokenize the data
     features = [
@@ -113,7 +159,7 @@ class MSMARCOData(LightningDataModule):
                        truncation='only_second',
                        return_tensors="pt") for qd_pair in query_doc_pairs
     ]
-    
+    print(self.triplets)
 
     return features
 
@@ -153,23 +199,14 @@ class ListRankLoss(LightningModule):
 
   def training_step(self, batch, batch_idx):
     pred_scores = []
-    print("batch", len(batch))
-    #print("batch a 0", batch[0])
-    scores = torch.tensor(0 * len(batch[0]['input_ids']), device=self.model.device)
-
-    print("SCORES")
-    print(scores.shape)
-    print(len(batch[0]['input_ids']))
+    print("batch", batch)
+    print("batch a 0", batch[0])
+    scores = torch.tensor([0] * len(batch[0]['input_ids']), device=self.model.device)
 
     for feature in batch:
       pred_scores.append(self(**feature).logits.squeeze())
 
-    pred_scores = torch.stack(pred_scores, dim=0)
-    
-    print("SHAPE")
-    print(pred_scores)
-    print(scores)
-
+    pred_scores = torch.stack(pred_scores, 1)
     loss_value = self.loss_fct(pred_scores, scores)
     self.global_train_step += 1
     self.log('global_train_step', self.global_train_step)
@@ -386,3 +423,7 @@ if __name__ == '__main__':
   else:
     print("MAIN")
     main(args)
+
+
+# Script was called via:
+#python /mnt/project/chatbotai/asmita/info-retrieval/contriever/finetune_script.py
