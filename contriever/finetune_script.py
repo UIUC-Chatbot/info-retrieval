@@ -33,7 +33,7 @@ else:
   dev = "cpu"
 
 print(" ------------- WARNING ONLY USING CPU FOR NOW ---------------------")
-dev = 'cpu'
+#dev = 'cpu'
 device = torch.device(dev)
 
 
@@ -277,6 +277,7 @@ def main(args):
 
   #Save final HF model
   final_path = os.path.join(output_dir, "final")
+  print("FINAL PATH: ", final_path)
   dm.tokenizer.save_pretrained(final_path)
   model.model.save_pretrained(final_path)
 
