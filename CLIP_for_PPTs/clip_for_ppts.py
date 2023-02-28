@@ -37,7 +37,7 @@ class ClipImage:
         
         print("👉 RUNNING CLIP'S ONE-TIME ENCODING STEP... will be slow the first time, and hopefully only the first time.")
         # passing in an image as a cheap hack, to make one funciton work for initial embedding.
-        self.calculate_similarity('/home/kastanday/uiuc_chatbot/main_fn/lecture_slides/001/Slide1.jpeg')
+        self.calculate_similarity('/home/rsalvi/chatbotai/rohan/main_fn/lecture_slides/001/Slide1.jpeg')
         print("🔥 DONE with CLIP's ONE TIME ENCODING")
     
     def text_to_image_search(self, search_text: str, top_k_to_return: int = 4):
@@ -83,7 +83,65 @@ class ClipImage:
         ans = sorted(self.res, key=lambda x: x[2], reverse=True)
         return ans[:top_k]
 
-    def calculate_similarity(self, input_text_or_img, topk_val: int = 3):
+    def new_most_similar_slide_file(self, top_k: int):
+        # Sort the results
+        ans = sorted(self.res, key=lambda x: x[2], reverse=True)
+        return ans[:top_k]
+## Old - Function
+    # def calculate_similarity(self, input_text_or_img, topk_val: int = 3):
+    #     # Create the input features
+    #     input_features = self.create_input_features(input_text_or_img)
+            
+    #     # Iterate through all the folders
+    #     ppts = list(os.listdir(self.path_of_ppt_folders))
+
+    #     for i in ppts:
+    #         # Get the path of the folder containing the ppt images
+    #         imgs = list(os.listdir(os.path.join(self.path_of_ppt_folders, i)))
+    #         # Iterate through all the images and preprocess them
+    #         image_input = torch.cat([self.preprocess(Image.open(os.path.join(
+    #             self.path_of_ppt_folders, i, image))).unsqueeze(0) for image in imgs]).to(self.device)
+
+    #         # Check if the preprocessed file exists and load it
+    #         img_flag = os.path.exists(
+    #             self.path_to_save_image_features+i+"_tensor.pt")
+    #         if img_flag:
+    #             image_features = torch.load(
+    #                 self.path_to_save_image_features+i+"_tensor.pt", map_location=self.device)
+    #         else:
+    #             # Encode the images and save the encoding
+    #             with torch.no_grad():
+    #                 image_features = self.model.encode_image(image_input)
+    #             image_features /= image_features.norm(dim=-1, keepdim=True)
+    #             torch.save(image_features,
+    #                        self.path_to_save_image_features+i+"_tensor.pt")
+    #             print("Saved the image features (for faster future loading) to: ",
+    #                   self.path_to_save_image_features+i+"_tensor.pt")
+
+    #         # Calculate the similarity between the input image and the images in the folder
+            
+    #      TODO: THIS REQUIRES REFACTOR. We're only looking in a SINGLE FOLDER. need to APPEND to similarity. 
+    #         if self.mode == 'image':
+    #             similarity = (100.0 * input_features @
+    #                           image_features.T).softmax(dim=-1)
+    #         elif self.mode == 'text':
+    #             similarity = (100.0 * image_features @
+    #                           input_features.T).softmax(dim=-1)
+
+    #     # Get the top k most similar images
+    #     print("🚨FIXING TOP K to 1!!!!!!!!!!!!!!")
+    #     topk_val = 1
+    #     print(similarity)
+    #     values, indices = similarity[0].topk(topk_val)
+    #     for val, index in zip(values, indices):
+    #         self.res.append([i, imgs[index], val])
+
+    #     # Return the sorted results
+    #     return self.most_similar_slide_file(topk_val)
+    def calculate_similarity(self, input_text_or_img, topk_val: int = 4):
+ ## Similarities across folders
+        all_similarities = []
+        slide_numbers = []
         # Create the input features
         input_features = self.create_input_features(input_text_or_img)
             
@@ -93,7 +151,9 @@ class ClipImage:
         for i in ppts:
             # Get the path of the folder containing the ppt images
             imgs = list(os.listdir(os.path.join(self.path_of_ppt_folders, i)))
+            slide_numbers.append(imgs)
             # Iterate through all the images and preprocess them
+            
             image_input = torch.cat([self.preprocess(Image.open(os.path.join(
                 self.path_of_ppt_folders, i, image))).unsqueeze(0) for image in imgs]).to(self.device)
 
@@ -120,16 +180,25 @@ class ClipImage:
                 similarity = (100.0 * input_features @
                               image_features.T).softmax(dim=-1)
             elif self.mode == 'text':
-                similarity = (100.0 * image_features @
-                              input_features.T).softmax(dim=-1)
+                similarity = (100.0 * input_features @
+                              image_features.T).softmax(dim=-1)
+                all_similarities.append((i,similarity))
 
-        # Get the top k most similar images
-        print("🚨FIXING TOP K to 1!!!!!!!!!!!!!!")
-        topk_val = 1
-        print(similarity)
-        values, indices = similarity[0].topk(topk_val)
-        for val, index in zip(values, indices):
-            self.res.append([i, imgs[index], val])
+        
+        ## Looking over all the folders
+        ## List to store similarity per image as (folder,slide_no, similarity)
+        similarity_results = []  
 
+        for j in range(0,len(all_similarities)):
+          folder_name = all_similarities[j][0]
+          folder_values = all_similarities[j][1][0]
+          for i in range(0,len(folder_values)):
+            self.res.append((folder_name,slide_numbers[j][i],folder_values[i]))
+        
+        return self.new_most_similar_slide_file(topk_val)
         # Return the sorted results
-        return self.most_similar_slide_file(topk_val)
+
+
+# demo = ClipImage('/home/rsalvi/chatbotai/rohan/main_fn/lecture_slides','/home/rsalvi/chatbotai/rohan/info-retrieval/CLIP_for_PPTs/img_features')
+# op = demo.text_to_image_search('Unsigned Bit Pattern?')
+# print(op)
