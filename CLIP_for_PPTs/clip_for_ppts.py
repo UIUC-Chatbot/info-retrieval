@@ -8,6 +8,7 @@ from pptx.enum.shapes import MSO_SHAPE_TYPE
 import time
 
 
+
 class ClipImage:
     def __init__(self, path_of_ppt_folders, path_to_save_image_features, mode='image', device='cuda'):
         """
@@ -17,6 +18,13 @@ class ClipImage:
         :param mode: 'image' or 'text' based on the type of input
         :param device: device to run the model on
         """
+        # Path
+        directory = 'input_features'
+        path = os.path.join(path_to_save_image_features, directory)
+        if not os.path.exists(path):
+            # Create the directory
+            os.mkdir(path)
+            print("Directory '% s' created" % directory)
 
         self.res = []
         if not os.path.isdir(path_of_ppt_folders):
